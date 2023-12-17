@@ -1,0 +1,24 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "poop"
+authors = [{name = "Oliver Margetts", email = "oliver.margetts@gmail.com"}]
+license = {file = "LICENSE"}
+classifiers = ["License :: OSI Approved :: MIT License"]
+dynamic = ["description"]
+version = "0.1.0"
+
+[project.urls]
+Home = "https://github.com/olliemath/poop"
+
+[project.scripts]
+poop = "poop:main"
+
+[project.optional-dependencies]
+dev = [
+    "mypy==1.7.1",
+    "pytest==7.4.3",
+    "ruff==0.1.8",
+]
