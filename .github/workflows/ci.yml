@@ -1,0 +1,81 @@
+name: test
+
+on: [push]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[test]
+      - name: ruff lint
+        run: |
+          ruff .
+      - name: ruff format
+        run: |
+          ruff format --check .
+      - name: mypy
+        run: |
+          mypy .
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "pypy3.9", "pypy3.10"]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[test]
+      - name: pytest
+        run: |
+          pytest -W error .
+
+  e2e-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.12", "pypy3.10"]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: check install editable
+        run: |
+          python -m venv so-editable
+          source so-editable/bin/activate
+          python poop.py develop .
+          poop --help
+          deactivate
+      - name: check install
+        run: |
+          python -m venv so-installable
+          source so-installable/bin/activate
+          python poop.py install .
+          poop --help
+          deactivate
+      - name: check install global
+        run: |
+          python poop.py install .
+          poop --help

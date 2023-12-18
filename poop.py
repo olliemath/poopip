@@ -40,7 +40,7 @@ def install(package: str, editable: bool = True, user: bool = False) -> None:
 
 
 def _install_impl(source_dir: _Path, target_dir: _Path, editable: bool) -> None:
-    pyproject = _parse_pyproject(source_dir)
+    _version, scripts = _parse_pyproject(source_dir)
     source = _get_top_level(source_dir)
     if editable:
         target = target_dir / (source_dir.name + ".pth")
@@ -61,10 +61,10 @@ def _install_impl(source_dir: _Path, target_dir: _Path, editable: bool) -> None:
     else:
         _shutil.copytree(source, target, ignore=_IGNORE)
 
-    _install_scripts(pyproject["scripts"])
+    _install_scripts(scripts)
 
 
-def _install_scripts(scripts: list[str]):
+def _install_scripts(scripts: dict[str, str]) -> None:
     bin = _Path(_sys.executable).parent
     for name, spec in scripts.items():
         module, func = spec.split(":")
@@ -84,10 +84,12 @@ if __name__ == '__main__':
             )
 
         # make our script executable
-        script.chmod(script.stat().st_mode | _stat.S_IXUSR | _stat.S_IXGRP | _stat.S_IXOTH)
+        script.chmod(
+            script.stat().st_mode | _stat.S_IXUSR | _stat.S_IXGRP | _stat.S_IXOTH
+        )
 
 
-def _parse_pyproject(source_dir: _Path) -> dict[str, str]:
+def _parse_pyproject(source_dir: _Path) -> tuple[str, dict[str, str]]:
     scripts = {}
     version = "0.0.0"
     if (pyproject := source_dir / "pyproject.toml").exists():
@@ -97,29 +99,31 @@ def _parse_pyproject(source_dir: _Path) -> dict[str, str]:
             with pyproject.open("rb") as f:
                 parsed = tomllib.load(f).get("project")
 
-            version = parsed.get("version", "0.0.0")
-            scripts = parsed.get("scripts", {})
+            if parsed is not None:
+                version = parsed.get("version", "0.0.0")
+                scripts = parsed.get("scripts", {})
 
         except ModuleNotFoundError:
             # ugh, nasty.. but gone by 3.11
             with pyproject.open("r") as f:
                 raw = f.read()
 
-            project_spec = _re.split(r"^[project]", raw, maxsplit=1)
+            project_spec = _re.split(r"^\[project\]|\n\[project\]", raw, maxsplit=1)
             if len(project_spec) > 1:
-                project_spec = _re.split(r"^[", project_spec[1], maxsplit=1)[0]
-                if match := _re.match(r"^version\s+=\s+([\w.]+)"):
-                    version = match.groups()[0]
+                project_spec = _re.split(r"\n\[", project_spec[1], maxsplit=1)
+                for line in project_spec[0].split("\n"):
+                    if match := _re.match(r'^version\s+=\s+"([.\w.]+)"', line):
+                        version = match.groups()[0]
 
-            script_spec = _re.split(r"^[project.scripts]", raw, maxsplit=1)
+            script_spec = _re.split(r"\n\[project.scripts\]", raw, maxsplit=1)
             if len(script_spec) > 1:
-                script_spec = _re.split(r"^[", script_spec[1], maxsplit=1)[0]
-                for line in script_spec.split("\n"):
+                script_spec = _re.split(r"\n\[", script_spec[1], maxsplit=1)
+                for line in script_spec[0].split("\n"):
                     if "=" in line:
                         name, spec = line.split("=")
-                        scripts[name.strip()] = spec.strip()
+                        scripts[name.strip()] = spec.strip()[1:-1]
 
-    return {"version": version, "scripts": scripts}
+    return version, scripts
 
 
 def _get_top_level(source_dir: _Path) -> _Path:

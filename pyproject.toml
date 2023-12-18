@@ -17,8 +17,57 @@ Home = "https://github.com/olliemath/poop"
 poop = "poop:main"
 
 [project.optional-dependencies]
-dev = [
+test = [
     "mypy==1.7.1",
     "pytest==7.4.3",
     "ruff==0.1.8",
 ]
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+
+## Rule Selection
+# to read about ruff rules check this: https://beta.ruff.rs/docs/rules/
+select = [
+  'E', 'W',         # pycodestyle: E, W
+  'F',              # pyflakes: F
+  'B',              # flake8-bugbear: B
+  'N',              # pep8-naming: N
+  'I',              # isort: I
+  'ISC',            # flake8-implicit-str-concat: ISC
+  'ANN',            # flake8-annotations: ANN
+  'PYI',            # flake8-pyi: PYI
+  'PT',             # flake8-pytest-style: PT
+  'UP',             # pyupgrade: UP
+  'RUF',            # ruff: RUF (Specifically implicit-optional)
+  'T',              # flake8-debugger: T
+]
+ignore = [
+  'T201',  # we want to use print for now
+  # The following rules are ignored for `ruff format`'s benefit
+  # https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
+  'E501',
+  'W191', 'E111', 'E114', 'E117',
+  'D206', 'D300',
+  'Q000', 'Q001', 'Q002', 'Q003',
+  'COM812', 'COM819',
+  'ISC001',
+]
+
+## File Selection
+force-exclude = true  # don't check excluded files even if passed directly
+
+[tool.ruff.pydocstyle]
+convention = "google"
+
+[tool.ruff.isort]
+required-imports = [
+  "from __future__ import annotations",
+]
+relative-imports-order = "closest-to-furthest"
+combine-as-imports = true
+
+[tool.mypy]
+# required for tomllib on earlier pythons
+ignore_missing_imports = true
