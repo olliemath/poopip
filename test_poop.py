@@ -20,6 +20,9 @@ def test_parser() -> None:
     assert args.command == "develop"
     assert args.user
 
+    args = parser.parse_args(["uninstall", "bar"])
+    assert args.command == "uninstall"
+
     with pytest.raises(SystemExit):
         parser.parse_args(["blorp", "foo"])
 

@@ -8,6 +8,7 @@ import site as _site
 import stat as _stat
 import sys as _sys
 from argparse import ArgumentParser as _ArgumentParser, _StoreTrueAction
+from email.parser import HeaderParser as _HeaderParser
 from pathlib import Path as _Path
 
 _IGNORE = _shutil.ignore_patterns("tests", "test_*.py")
@@ -35,36 +36,132 @@ def install(package: str, editable: bool = True, user: bool = False) -> None:
     except PermissionError:
         _printerr(
             f"Error: 👮 insufficient permissions to write '{site}' 🤷"
-            "\n       you could try using the --user flag or in a venv?",
+            f"{_os.linesep}       you could try using the --user flag or in a venv?",
+            code=3,
+        )
+
+
+def uninstall(package: str, user: bool = False) -> None:
+    """Uninstall a local package."""
+    # TODO: normalise package name?
+
+    if user:
+        site = _Path(_site.getusersitepackages())
+    else:
+        site = _Path(_site.getsitepackages()[0])
+
+    try:
+        _uninstall_impl(package, site)
+    except PermissionError:
+        _printerr(
+            f"Error: 👮 insufficient permissions to write '{site}' 🤷"
+            f"{_os.linesep}       you could try using the --user flag or in a venv?",
             code=3,
         )
 
 
 def _install_impl(source_dir: _Path, target_dir: _Path, editable: bool) -> None:
-    _version, scripts = _parse_pyproject(source_dir)
+    version, scripts = _parse_pyproject(source_dir)
+    package_name = source_dir.name
     source = _get_top_level(source_dir)
-    if editable:
-        target = target_dir / (source_dir.name + ".pth")
-    else:
-        target = target_dir / source.name
+    editable_target = target_dir / (package_name + ".pth")
+    regular_target = target_dir / source.name
 
-    if target.exists():
-        _printerr(
-            f"Error: 👯 duplicate installed package found at '{target}' 🤷"
-            "\n       you might want to remove this somehow?"
-            "\n       we'll try and add 'uninstall' soon!",
-            code=5,
-        )
+    if editable_target.exists() or regular_target.exists():
+        _printerr(f"Note: {package_name} already installed 👯", code=0)
 
     if editable:
-        with target.open("w") as f:
+        with editable_target.open("w") as f:
             f.write(str(source.parent.resolve()) + _os.linesep)
     elif source.is_file():
-        _shutil.copy(source, target)
+        _shutil.copy(source, regular_target)
     else:
-        _shutil.copytree(source, target, ignore=_IGNORE)
+        _shutil.copytree(source, regular_target, ignore=_IGNORE)
 
     _install_scripts(scripts)
+    _install_metadata(source_dir, target_dir, package_name, version, scripts)
+
+
+def _uninstall_impl(package: str, target_dir: _Path) -> None:
+    scripts = []
+    parser = _HeaderParser()
+    # this annoying loop is because somebody decided to put
+    # the version in the directory name
+    candidate: _Path
+    for candidate in target_dir.glob(f"{package}-*.dist-info"):
+        if (meta := (candidate / "METADATA")).exists():
+            with meta.open("r") as f:
+                parsed = parser.parse(f)
+
+            if parsed.get("Name") == package:
+                if (entry_points := candidate / "entry_points.txt").exists():
+                    with entry_points.open("r") as f:
+                        for line in f:
+                            if " = " in line:
+                                scripts.append(line.split(" = ", 1)[0])
+
+                _shutil.rmtree(candidate)
+                break
+
+    bin = _Path(_sys.executable).parent
+    for script in scripts:
+        candidate = bin / script
+        candidate.unlink(missing_ok=True)
+
+    candidate = target_dir / (package + ".pth")
+    if candidate.exists():
+        candidate.unlink(missing_ok=True)
+    else:
+        candidate = target_dir / (package + ".py")
+        if candidate.exists():
+            candidate.unlink(missing_ok=True)
+        else:
+            candidate = target_dir / package
+            if candidate.exists():
+                _shutil.rmtree(candidate)
+
+
+def _install_metadata(
+    source_dir: _Path,
+    target_dir: _Path,
+    package_name: str,
+    version: str,
+    scripts: dict[str, str],
+) -> None:
+    dist_info: _Path = target_dir / f"{package_name}-{version}.dist-info"
+    dist_info.mkdir()
+
+    with (dist_info / "INSTALLER").open("w") as f:
+        f.write("poop" + _os.linesep)
+
+    with (dist_info / "METADATA").open("w") as f:
+        f.write(
+            _os.linesep.join(
+                [
+                    "Metadata-Version: 2.1",
+                    f"Name: {package_name}",
+                    f"Version: {version}",
+                ]
+            )
+        )
+
+    if scripts:
+        with (dist_info / "entry_points.txt").open("w") as f:
+            f.write("[console_scripts]" + _os.linesep)
+            f.writelines(f"{k} = {v}{_os.linesep}" for k, v in scripts.items())
+
+    # Look for a LICENSE and AUTHORS file if they exist
+    license: _Path
+    for license_candidate in ("LICENSE", "LICENSE.txt"):
+        if (license := source_dir / license_candidate).exists():
+            _shutil.copy(license, dist_info)
+            break
+
+    authors: _Path
+    for authors_candidate in ("AUTHORS", "AUTHORS.txt"):
+        if (authors := source_dir / authors_candidate).exists():
+            _shutil.copy(authors, dist_info)
+            break
 
 
 def _install_scripts(scripts: dict[str, str]) -> None:
@@ -149,7 +246,7 @@ def _get_top_level(source_dir: _Path) -> _Path:
 
     return _printerr(
         "Error: 🔖 incorrectly labelled or non-existant source 🤷"
-        "\n       name your stuff right, or else use a python with toml support!"
+        f"{_os.linesep}       name your stuff right, or else use a python with toml support!"
     )  # type: ignore
 
 
@@ -167,7 +264,7 @@ def _get_parser() -> _ArgumentParser:
     parser.add_argument(
         "command",
         type=str,
-        choices=["install", "develop"],
+        choices=["install", "develop", "uninstall"],
         help="action to perform on the package",
     )
     parser.add_argument("package", type=str, help="name or path of the package")
@@ -189,6 +286,8 @@ def main() -> None:
         install(args.package, False, args.user)
     elif args.command == "develop":
         install(args.package, True, args.user)
+    elif args.command == "uninstall":
+        uninstall(args.package, args.user)
 
 
 if __name__ == "__main__":

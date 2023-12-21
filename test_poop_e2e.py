@@ -29,7 +29,10 @@ def venv_env() -> Iterator[dict[str, str]]:
 
         env = dict(os.environ)
         env["VIRTUAL_ENV"] = str(venv_dir)
-        env["PATH"] = str(venv_dir / "bin") + ":" + env["PATH"]
+        env["PATH"] = ":".join(
+            [str(venv_dir / "bin")]
+            + [p for p in env["PATH"].split(":") if "venv" not in p]
+        )
 
         yield env
 
@@ -48,13 +51,12 @@ def test_install_develop_uninstall_mixed(
     # this should be a no-op
     run_command(["python", repo / "poop.py", "install", repo], env=venv_env)
     run_command(["python", repo / "poop.py", "develop", repo], env=venv_env)
-    assert str(repo) not in sys.path  # should not have overriden the install
     # we can still run the script
     run_command(["poop", "--help"], env=venv_env)
     # now let's uninstall
     run_command(["python", repo / "poop.py", "uninstall", "poop"], env=venv_env)
     # we can no longer run the script
-    with pytest.raises(subprocess.CalledProcessError):
+    with pytest.raises(FileNotFoundError):
         run_command(["poop", "--help"], env=venv_env)
 
     # now let's do the same with develop
@@ -64,11 +66,10 @@ def test_install_develop_uninstall_mixed(
     # this should be a no-op
     run_command(["python", repo / "poop.py", "develop", repo], env=venv_env)
     run_command(["python", repo / "poop.py", "install", repo], env=venv_env)
-    assert str(repo) in sys.path  # should not have overriden the install
     # we can still run the script
     run_command(["poop", "--help"], env=venv_env)
     # now let's uninstall
     run_command(["python", repo / "poop.py", "uninstall", "poop"], env=venv_env)
     # we can no longer run the script
-    with pytest.raises(subprocess.CalledProcessError):
+    with pytest.raises(FileNotFoundError):
         run_command(["poop", "--help"], env=venv_env)
