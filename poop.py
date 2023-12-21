@@ -23,8 +23,7 @@ def install(package: str, editable: bool = True, user: bool = False) -> None:
 
     source_dir = _Path(package).resolve()
     if not source_dir.exists():
-        print(f"Error: 🕵️ couldn't find '{package}' 🤷")
-        exit(1)
+        _printerr(f"Error: 🕵️ couldn't find '{package}' 🤷")
 
     if user:
         site = _Path(_site.getusersitepackages())
@@ -34,9 +33,11 @@ def install(package: str, editable: bool = True, user: bool = False) -> None:
     try:
         _install_impl(source_dir, site, editable)
     except PermissionError:
-        print(f"Error: 👮 insufficient permissions to write '{site}' 🤷")
-        print("       you could try using the --user flag or in a venv?")
-        exit(3)
+        _printerr(
+            f"Error: 👮 insufficient permissions to write '{site}' 🤷"
+            "\n       you could try using the --user flag or in a venv?",
+            code=3,
+        )
 
 
 def _install_impl(source_dir: _Path, target_dir: _Path, editable: bool) -> None:
@@ -48,10 +49,12 @@ def _install_impl(source_dir: _Path, target_dir: _Path, editable: bool) -> None:
         target = target_dir / source.name
 
     if target.exists():
-        print(f"Error: 👯 duplicate installed package found at '{target}' 🤷")
-        print("       you might want to remove this somehow?")
-        print("       we'll try and add 'uninstall' soon!")
-        exit(5)
+        _printerr(
+            f"Error: 👯 duplicate installed package found at '{target}' 🤷"
+            "\n       you might want to remove this somehow?"
+            "\n       we'll try and add 'uninstall' soon!",
+            code=5,
+        )
 
     if editable:
         with target.open("w") as f:
@@ -144,9 +147,10 @@ def _get_top_level(source_dir: _Path) -> _Path:
     if candidate.exists() and candidate.is_dir():
         return candidate
 
-    print("Error: 🔖 incorrectly labelled or non-existant source 🤷")
-    print("       name your stuff right, or else wait for toml support!")
-    exit(1)
+    return _printerr(
+        "Error: 🔖 incorrectly labelled or non-existant source 🤷"
+        "\n       name your stuff right, or else use a python with toml support!"
+    )  # type: ignore
 
 
 def _get_parser() -> _ArgumentParser:
@@ -171,6 +175,11 @@ def _get_parser() -> _ArgumentParser:
         "--user", action=_StoreTrueAction, help="install as user-local package"
     )
     return parser
+
+
+def _printerr(err: str, code: int = 1) -> None:
+    print(err, file=_sys.stderr)
+    exit(code)
 
 
 def main() -> None:
