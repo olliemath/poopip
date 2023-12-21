@@ -1,4 +1,4 @@
-"""poop - for when pip is too slow 💩"""
+"""poopip: for when pip is too slow 💩"""
 from __future__ import annotations
 
 import os as _os

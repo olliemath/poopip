@@ -7,8 +7,9 @@ name = "poop"
 authors = [{name = "Oliver Margetts", email = "oliver.margetts@gmail.com"}]
 license = {file = "LICENSE"}
 classifiers = ["License :: OSI Approved :: MIT License"]
-dynamic = ["description"]
+description = "poopip: for when pip is too slow 💩"
 version = "0.1.0"
+readme = "README.md"
 
 [project.urls]
 Home = "https://github.com/olliemath/poop"
