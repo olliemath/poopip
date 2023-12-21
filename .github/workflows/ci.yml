@@ -47,7 +47,7 @@ jobs:
           pip install .[test]
       - name: pytest
         run: |
-          pytest -W error test_poop.py
+          pytest -W error test_poopip.py
 
   e2e-test:
     runs-on: ubuntu-latest
@@ -67,4 +67,4 @@ jobs:
           pip install .[test]
       - name: pytest
         run: |
-          pytest -W error test_poop_e2e.py
+          pytest -W error test_poopip_e2e.py

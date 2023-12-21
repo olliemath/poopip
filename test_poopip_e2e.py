@@ -44,32 +44,32 @@ def run_command(cmd: list[Any], env: dict[str, str]) -> None:
 def test_install_develop_uninstall_mixed(
     venv_env: dict[str, str], repo: pathlib.Path
 ) -> None:
-    # first let's install poop itself
-    run_command(["python", repo / "poop.py", "install", repo], env=venv_env)
+    # first let's install poopip itself
+    run_command(["python", repo / "poopip.py", "install", repo], env=venv_env)
     # now check we can run it
     run_command(["poop", "--help"], env=venv_env)
     # this should be a no-op
-    run_command(["python", repo / "poop.py", "install", repo], env=venv_env)
-    run_command(["python", repo / "poop.py", "develop", repo], env=venv_env)
+    run_command(["python", repo / "poopip.py", "install", repo], env=venv_env)
+    run_command(["python", repo / "poopip.py", "develop", repo], env=venv_env)
     # we can still run the script
     run_command(["poop", "--help"], env=venv_env)
     # now let's uninstall
-    run_command(["python", repo / "poop.py", "uninstall", "poop"], env=venv_env)
+    run_command(["python", repo / "poopip.py", "uninstall", "poopip"], env=venv_env)
     # we can no longer run the script
     with pytest.raises(FileNotFoundError):
         run_command(["poop", "--help"], env=venv_env)
 
     # now let's do the same with develop
-    run_command(["python", repo / "poop.py", "develop", repo], env=venv_env)
+    run_command(["python", repo / "poopip.py", "develop", repo], env=venv_env)
     # now check we can run it
     run_command(["poop", "--help"], env=venv_env)
     # this should be a no-op
-    run_command(["python", repo / "poop.py", "develop", repo], env=venv_env)
-    run_command(["python", repo / "poop.py", "install", repo], env=venv_env)
+    run_command(["python", repo / "poopip.py", "develop", repo], env=venv_env)
+    run_command(["python", repo / "poopip.py", "install", repo], env=venv_env)
     # we can still run the script
     run_command(["poop", "--help"], env=venv_env)
     # now let's uninstall
-    run_command(["python", repo / "poop.py", "uninstall", "poop"], env=venv_env)
+    run_command(["python", repo / "poopip.py", "uninstall", "poopip"], env=venv_env)
     # we can no longer run the script
     with pytest.raises(FileNotFoundError):
         run_command(["poop", "--help"], env=venv_env)

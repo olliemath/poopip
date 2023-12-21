@@ -5,7 +5,7 @@ import tempfile
 
 import pytest
 
-from poop import _get_parser, _parse_pyproject
+from poopip import _get_parser, _parse_pyproject
 
 
 def test_parser() -> None:
@@ -29,7 +29,7 @@ def test_parser() -> None:
 
 def test_parse_pyproject() -> None:
     path = pathlib.Path(__file__).parent
-    assert _parse_pyproject(path) == ("0.1.0", {"poop": "poop:main"})
+    assert _parse_pyproject(path) == ("0.1.0", {"poop": "poopip:main"})
 
     with tempfile.TemporaryDirectory() as d:
         path = pathlib.Path(d)

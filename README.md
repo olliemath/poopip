@@ -37,6 +37,10 @@ poop uninstall thing
 poop uninstall thing --user
 ```
 
+generally poopip will take the name of the directory as the name of the package and
+assume the code is either at thing/thing.py, or a directory thing/thing/ - it's on
+our todo list to read the pyproject.toml for this.
+
 ## non-goals
 
 poopip doesn't care about your package's requirements, just install them yourself (e.g. from a requirements.txt or requirements.lock file)
