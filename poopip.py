@@ -28,11 +28,11 @@ def main() -> None:
     parser = _get_parser()
     args = parser.parse_args()
     if args.command == "install":
-        install(args.package, False, args.user)
-    elif args.command == "develop":
-        install(args.package, True, args.user)
+        install(args.package, editable=args.editable, user_flag=args.user)
     elif args.command == "uninstall":
-        uninstall(args.package, args.user)
+        uninstall(args.package, user_flag=args.user)
+    elif args.command == "freeze":
+        print_packages(user_flag=args.user)
 
 
 def install(package: str, editable: bool = True, user_flag: bool = False) -> None:
@@ -75,17 +75,26 @@ def _get_parser() -> _ArgumentParser:
         epilog="""pip is advanced and complex 🔬 for serious professionals 🤵
         poop is basic and simple 🔨 for impatient children 🦄""",
     )
+    parser.add_argument(
+        "--user", action=_StoreTrueAction, help="use user-local packages"
+    )
+    subparsers = parser.add_subparsers(
+        title="command", description="command to run", dest="command", required=True
+    )
 
-    parser.add_argument(
-        "command",
-        type=str,
-        choices=["install", "develop", "uninstall"],
-        help="action to perform on the package",
+    install_parser = subparsers.add_parser("install", help="install a package")
+    install_parser.add_argument("package", type=str, help="name or path of the package")
+    install_parser.add_argument(
+        "-e", "--editable", action=_StoreTrueAction, help="install in editable mode"
     )
-    parser.add_argument("package", type=str, help="name or path of the package")
-    parser.add_argument(
-        "--user", action=_StoreTrueAction, help="install as user-local package"
+
+    uninstall_parser = subparsers.add_parser("uninstall", help="uninstall a package")
+    uninstall_parser.add_argument(
+        "package", type=str, help="name or path of the package"
     )
+
+    subparsers.add_parser("freeze", help="show installed packages")
+
     return parser
 
 
@@ -266,7 +275,7 @@ def install_metadata(location: Path, pyproject: PyProject, target_dir: Path) -> 
     dist_info.mkdir()
 
     with (dist_info / "INSTALLER").open("w") as f:
-        f.write("poop" + os.linesep)
+        f.write("poopip" + os.linesep)
 
     with (dist_info / "METADATA").open("w") as f:
         f.write(
@@ -321,12 +330,14 @@ if __name__ == '__main__':
 
 
 def uninstall_local(package: DangerousName, user_flag: bool) -> None:
-    """Remove a package and its associated files"""
+    """Remove a package and its associated files."""
     target_dir = get_site_dir(user_flag)
-    return uninstall_impl(package, target_dir)
+    if not uninstall_impl(package, target_dir):
+        printerr(f"👻 '{package}' not installed 🤷")
 
 
-def uninstall_impl(package: DangerousName, target_dir: Path) -> None:
+def uninstall_impl(package: DangerousName, target_dir: Path) -> bool:
+    """Return True if something was uninstalled"""
     scripts = []
     if installed := find_installed(package, target_dir):
         safe_name, version = installed
@@ -339,22 +350,32 @@ def uninstall_impl(package: DangerousName, target_dir: Path) -> None:
 
         shutil.rmtree(meta_dir)
 
-    bin = Path(sys.executable).parent
-    for script in scripts:
-        candidate = bin / script
-        candidate.unlink(missing_ok=True)
+        bin = Path(sys.executable).parent
+        for script in scripts:
+            candidate = bin / script
+            candidate.unlink(missing_ok=True)
 
-    candidate = target_dir / (package + ".pth")
-    if candidate.exists():
-        candidate.unlink(missing_ok=True)
-    else:
-        candidate = target_dir / (package + ".py")
+        candidate = target_dir / (package + ".pth")
         if candidate.exists():
             candidate.unlink(missing_ok=True)
         else:
-            candidate = target_dir / package
+            candidate = target_dir / (package + ".py")
             if candidate.exists():
-                shutil.rmtree(candidate)
+                candidate.unlink(missing_ok=True)
+            else:
+                candidate = target_dir / package
+                if candidate.exists():
+                    shutil.rmtree(candidate)
+
+        return True
+
+    return False
+
+
+def print_packages(user_flag: bool) -> None:
+    target_dir = get_site_dir(user_flag)
+    for name, version in sorted(list_packages(target_dir)):
+        print(f"{name}=={version}")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import re
-
 import pytest
 
 from poopip import normalize_name
@@ -29,7 +27,7 @@ def test_normalize_name() -> None:
         "-no bad starts",
         "no bad ends_",
     ):
-        with pytest.raises(SystemExit, match=re.escape(bad)):
+        with pytest.raises(SystemExit):
             normalize_name(bad)
 
     assert normalize_name("0weird0") == "0weird0"

@@ -50,7 +50,7 @@ def test_install_develop_uninstall_mixed(
     run_command(["poop", "--help"], env=venv_env)
     # this should be a no-op
     run_command(["python", repo / "poopip.py", "install", repo], env=venv_env)
-    run_command(["python", repo / "poopip.py", "develop", repo], env=venv_env)
+    run_command(["python", repo / "poopip.py", "install", "-e", repo], env=venv_env)
     # we can still run the script
     run_command(["poop", "--help"], env=venv_env)
     # now let's uninstall
@@ -60,11 +60,11 @@ def test_install_develop_uninstall_mixed(
         run_command(["poop", "--help"], env=venv_env)
 
     # now let's do the same with develop
-    run_command(["python", repo / "poopip.py", "develop", repo], env=venv_env)
+    run_command(["python", repo / "poopip.py", "install", "-e", repo], env=venv_env)
     # now check we can run it
     run_command(["poop", "--help"], env=venv_env)
     # this should be a no-op
-    run_command(["python", repo / "poopip.py", "develop", repo], env=venv_env)
+    run_command(["python", repo / "poopip.py", "install", "-e", repo], env=venv_env)
     run_command(["python", repo / "poopip.py", "install", repo], env=venv_env)
     # we can still run the script
     run_command(["poop", "--help"], env=venv_env)
