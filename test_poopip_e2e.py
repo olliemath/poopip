@@ -25,7 +25,7 @@ def venv_env() -> Iterator[dict[str, str]]:
     """Create an isolated venv for this test"""
     with tempfile.TemporaryDirectory() as tempdir:
         venv_dir = pathlib.Path(tempdir) / "venv"
-        venv.create(venv_dir)
+        venv.create(venv_dir, with_pip=True)
 
         env = dict(os.environ)
         env["VIRTUAL_ENV"] = str(venv_dir)
@@ -33,6 +33,7 @@ def venv_env() -> Iterator[dict[str, str]]:
             [str(venv_dir / "bin")]
             + [p for p in env["PATH"].split(":") if "venv" not in p]
         )
+        run_command(["python", "-m", "pip", "install", "tomli"], env=env)
 
         yield env
 

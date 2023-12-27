@@ -13,6 +13,7 @@ classifiers = [
 description = "poopip: for when pip is too slow 💩"
 version = "0.2.0"
 readme = "README.md"
+dependencies = ["tomli; python_version < '3.11'"]
 
 [project.urls]
 Home = "https://github.com/olliemath/poop"
