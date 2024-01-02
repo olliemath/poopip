@@ -164,7 +164,7 @@ def find_installed(
             with meta.open("r") as f:
                 parsed = HeaderParser().parse(f)
 
-            if parsed.get("Name", "") == package:
+            if normalize_name(parsed.get("Name", "")).lower() == distinfo_name.lower():
                 if version := parsed.get("Version", ""):
                     return distinfo_name, version
 
@@ -303,8 +303,11 @@ def install_wheel(location: Path, user_flag: bool) -> None:
     with zipfile.ZipFile(location, "r") as zf:
         zf.extractall(target_dir)
 
+    dist_info = target_dir / f"{name}-{version}.dist-info"
+    poopmark(dist_info)
+
     scripts = {}
-    entry_points = target_dir / f"{name}-{version}.dist-info" / "entry_points.txt"
+    entry_points = dist_info / "entry_points.txt"
     if entry_points.exists():
         with entry_points.open("r") as f:
             for line in f:
@@ -313,6 +316,11 @@ def install_wheel(location: Path, user_flag: bool) -> None:
                     scripts[name.strip()] = entry_point.strip()
 
     install_scripts(scripts, user_flag)
+
+
+def poopmark(dist_info_dir: Path) -> None:
+    with (dist_info_dir / "INSTALLER").open("w") as f:
+        f.write("poopip" + os.linesep)
 
 
 def parse_wheel_name(wheel_name: str) -> tuple[str, str]:
@@ -348,9 +356,7 @@ def install_metadata(location: Path, pyproject: PyProject, target_dir: Path) -> 
     )
     dist_info.mkdir()
 
-    with (dist_info / "INSTALLER").open("w") as f:
-        f.write("poopip" + os.linesep)
-
+    poopmark(dist_info)
     with (dist_info / "METADATA").open("w") as f:
         f.write(
             os.linesep.join(

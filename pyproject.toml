@@ -11,7 +11,7 @@ classifiers = [
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 description = "poopip: for when pip is too slow 💩"
-version = "0.2.1"
+version = "0.2.2"
 readme = "README.md"
 dependencies = ["tomli; python_version < '3.11'"]
 
