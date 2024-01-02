@@ -10,22 +10,21 @@ import sys
 import zipfile
 from argparse import ArgumentParser as _ArgumentParser, _StoreTrueAction
 from pathlib import Path
-from typing import TYPE_CHECKING, NamedTuple
+from typing import NamedTuple
 
 try:
     import tomllib  # type: ignore
 except ModuleNotFoundError:
     import tomli as tomllib  # type: ignore
 
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
 
 DisplayName = str
 DistInfoName = str
 ModuleName = str
-_EVENTUAL_NAME_REX = None
-_EVENTUAL_REPLACE_REX = None
+_EVENTUAL_NAME_REX: re.Pattern | None = None
+_EVENTUAL_REPLACE_REX: re.Pattern | None = None
+# pep503 name -> (actual name, version, dist-info name)
+_SITE_INDEX: dict[str, tuple[str, str, Path]] = {}
 
 
 def main() -> None:
@@ -133,8 +132,11 @@ def get_bin_dir(user_flag: bool) -> Path:
     return Path(sys.executable).parent
 
 
-def list_packages(target_dir: Path) -> Iterator[tuple[str, str]]:
-    """List installed packages in the form (name, version)."""
+def package_index(target_dir: Path) -> dict[str, tuple[str, str, Path]]:
+    """Index installed packages in the form pep503 name -> (name, version, dist-info dir)."""
+    if _SITE_INDEX:
+        return _SITE_INDEX
+
     from email.parser import HeaderParser
 
     for candidate in target_dir.glob("*.dist-info"):
@@ -146,27 +148,18 @@ def list_packages(target_dir: Path) -> Iterator[tuple[str, str]]:
             version = parsed.get("Version", "")
 
             if name and version:
-                yield name, version
+                _SITE_INDEX[normalize_name(name).lower()] = (name, version, candidate)
+
+    return _SITE_INDEX
 
 
-def find_installed(
-    package: DisplayName, target_dir: Path
-) -> tuple[DisplayName, str] | None:
-    """List the installed package name and version, or None if it does not exist"""
-    from email.parser import HeaderParser
+def find_installed(package: DisplayName, target_dir: Path) -> tuple[str, Path] | None:
+    """List the installed version and distinfo path if it exists."""
+    pep503name = normalize_name(package).lower()
+    index = package_index(target_dir)
 
-    # TODO: glob is nice to have, but if we want the user to be able to e.g. search
-    # for foo-bar and find the Foo-Bar package, we might need something else?
-    distinfo_name = normalize_name(package)
-    candidate: Path
-    for candidate in target_dir.glob(f"{distinfo_name}-*.dist-info"):
-        if (meta := (candidate / "METADATA")).exists():
-            with meta.open("r") as f:
-                parsed = HeaderParser().parse(f)
-
-            if normalize_name(parsed.get("Name", "")).lower() == distinfo_name.lower():
-                if version := parsed.get("Version", ""):
-                    return distinfo_name, version
+    if pep503name in index:
+        return index[pep503name][1:]
 
     return None
 
@@ -180,7 +173,7 @@ def normalize_name(name: DisplayName) -> DistInfoName:
     "lowered" version of this.
     """
     global _EVENTUAL_NAME_REX, _EVENTUAL_REPLACE_REX
-    if _EVENTUAL_NAME_REX is None:
+    if _EVENTUAL_NAME_REX is None or _EVENTUAL_REPLACE_REX is None:
         _EVENTUAL_NAME_REX = re.compile(
             r"^([A-Z0-9]|[A-Z0-9][A-Z0-9._-]*[A-Z0-9])$", re.IGNORECASE
         )
@@ -266,8 +259,9 @@ def install_local(location: Path, editable: bool, user_flag: bool) -> None:
     pyproject = parse_pyproject(location)
     target_dir = get_site_dir(user_flag)
 
-    if installed_version := find_installed(pyproject.name, target_dir):
-        if installed_version == pyproject.version:
+    if installed := find_installed(pyproject.name, target_dir):
+        version, _ = installed
+        if version == pyproject.version:
             return
         else:
             uninstall_impl(pyproject.name, target_dir)
@@ -426,20 +420,19 @@ def uninstall_impl(package: DisplayName, target_dir: Path) -> bool:
     scripts = []
     top_level = []
     if installed := find_installed(package, target_dir):
-        distinfo_name, version = installed
-        meta_dir = target_dir / f"{distinfo_name}-{version}.dist-info"
-        if (entry_points := meta_dir / "entry_points.txt").exists():
+        _, distinfo_dir = installed
+        if (entry_points := distinfo_dir / "entry_points.txt").exists():
             with entry_points.open("r") as f:
                 for line in f:
                     if " = " in line:
                         scripts.append(line.split(" = ", 1)[0])
-        if (top_level_file := meta_dir / "top_level.txt").exists():
+        if (top_level_file := distinfo_dir / "top_level.txt").exists():
             with top_level_file.open("r") as f:
                 for line in f:
                     if line.strip():
                         top_level.append(line.strip())
 
-        shutil.rmtree(meta_dir)
+        shutil.rmtree(distinfo_dir)
 
         bin = Path(sys.executable).parent
         for script in scripts:
@@ -466,7 +459,7 @@ def uninstall_impl(package: DisplayName, target_dir: Path) -> bool:
 
 def print_packages(user_flag: bool) -> None:
     target_dir = get_site_dir(user_flag)
-    for name, version in sorted(list_packages(target_dir)):
+    for name, version, _ in sorted(package_index(target_dir).values()):
         print(f"{name}=={version}")
 
 

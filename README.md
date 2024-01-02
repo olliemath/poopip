@@ -41,12 +41,24 @@ generally poopip will take the name of the directory as the name of the package 
 assume the code is either at thing/thing.py, or a directory thing/thing/ - it's on
 our todo list to read the pyproject.toml for this.
 
+
+## goals
+
+- fast: aims to be the fastest step in your dev/ci process
+- small: single file under 1000 lines of code
+- portable: pure python, zero dependencies
+- readable: reading the source code will tell you something about how installs work
+
+On the portability front, currently poopip only officially supports linux - contributions are welcome.
+
+
 ## non-goals
 
-poopip doesn't care about your package's requirements, just install them yourself (e.g. from a requirements.txt or requirements.lock file)
+- requirements: poopip doesn't care about your package's requirements, just use a requirements file and install them yourself
+- [pypa specifications](https://packaging.python.org/en/latest/specifications/): poopip doesn't aim to implement all of the specifications where they conflict with its goals
+- setup.py: we have no intention of supporting setup.py or even dynamic pyproject fields
 
-poopip doesn't aim to implement all of the [pypa specifications](https://packaging.python.org/en/latest/specifications/) - in particular, if you install a package with poopip it's a good idea to uninstall it with
-poopip rather than relying on another packaging tool
+Note that while poopip understands and can update or uninstall pip-installed packages the converse is not true. The reason is that poopip's metadata operates at the directory level, whereas pip relies upon a list of individual files - creating this list is slow with large packages, so we don't do it. Use poopip to unistall poopip-installed packages.
 
 
 ## benchmarks
