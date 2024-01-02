@@ -28,13 +28,13 @@ for `some/path/to/a/package` the following should work:
 # install to our current environment
 poop install some/path/to/a/thing
 # install globally for current user
-poop install some/path/to/a/thing --user
+poop --user install some/path/to/a/thing
 # install in "editable" mode
-poop develop some/path/to/a/thing
+poop install -e some/path/to/a/thing
 # uninstall package from current environment
 poop uninstall thing
 # uninstall user's global package
-poop uninstall thing --user
+poop --user uninstall thing
 ```
 
 generally poopip will take the name of the directory as the name of the package and
@@ -61,12 +61,12 @@ In the regular old install case, poopip is up to 300x faster than pip!
 | pypy3.10    | flit install --deps none | 6.143s |
 | pypy3.10    | flit install -s --deps none | 0.415s |
 | pypy3.10    | python poopip.py install . | 0.136s |
-| pypy3.10    | python poopip.py develop . | 0.116s |
+| pypy3.10    | python poopip.py install -e . | 0.116s |
 | python3.11 | pip install --no-deps . | 1.981s |
 | python3.11 | pip install --no-deps -e . | 1.920s |
 | python3.11 | flit install --deps none  | 2.008s |
 | python3.11 | flit install -s --deps none | 0.183s |
 | python3.11 | python poopip install . | 0.061s |
-| python3.11 | python poopip develop . | 0.075s |
+| python3.11 | python poopip install -e . | 0.075s |
 
 Flit's not really a package manager, but it is much faster than pip if we use symlinks (`flit install -s --deps none`), so if you're after a good dev experience and only want to install in editable mode I would highly recomend it as a more sane option.

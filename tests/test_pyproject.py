@@ -8,17 +8,17 @@ from poopip import normalize_name
 def test_normalize_name() -> None:
     # Examples directly from
     # https://packaging.python.org/en/latest/specifications/name-normalization/
-    for good in (
-        "friendly-bard",
-        "Friendly-Bard",
-        "FRIENDLY-BARD",
-        "friendly.bard",
-        "friendly_bard",
-        "friendly--bard",
-        "FrIeNdLy-._.-bArD",
+    for good, expected in (
+        ("friendly-bard", "friendly_bard"),
+        ("Friendly-Bard", "Friendly_Bard"),
+        ("FRIENDLY-BARD", "FRIENDLY_BARD"),
+        ("friendly.bard", "friendly_bard"),
+        ("friendly_bard", "friendly_bard"),
+        ("friendly--bard", "friendly_bard"),
+        ("FrIeNdLy-._.-bArD", "FrIeNdLy_bArD"),
     ):
         # but we use the module/package friendly name
-        assert normalize_name(good) == "friendly_bard"
+        assert normalize_name(good) == expected
 
     for bad in (
         "no spaces",
