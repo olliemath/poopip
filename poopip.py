@@ -166,7 +166,7 @@ def find_installed(
 
             if parsed.get("Name", "") == package:
                 if version := parsed.get("Version", ""):
-                    return package, version
+                    return distinfo_name, version
 
     return None
 
@@ -420,8 +420,8 @@ def uninstall_impl(package: DisplayName, target_dir: Path) -> bool:
     scripts = []
     top_level = []
     if installed := find_installed(package, target_dir):
-        _, version = installed
-        meta_dir = target_dir / f"{package}-{version}.dist-info"
+        distinfo_name, version = installed
+        meta_dir = target_dir / f"{distinfo_name}-{version}.dist-info"
         if (entry_points := meta_dir / "entry_points.txt").exists():
             with entry_points.open("r") as f:
                 for line in f:
