@@ -21,9 +21,9 @@ except ModuleNotFoundError:
 DisplayName = str
 DistInfoName = str
 ModuleName = str
-_EVENTUAL_NAME_REX: re.Pattern | None = None
-_EVENTUAL_REPLACE_REX: re.Pattern | None = None
-# pep503 name -> (actual name, version, dist-info name)
+_NAME_REX = re.compile(r"^([A-Z0-9]|[A-Z0-9][A-Z0-9._-]*[A-Z0-9])$", re.IGNORECASE)
+_REPLACE_REX = re.compile(r"[-._]+")
+# pep503 name -> (actual name, version, dist-info path)
 _SITE_INDEX: dict[str, tuple[str, str, Path]] = {}
 
 
@@ -77,6 +77,13 @@ def uninstall(package: str, user_flag: bool = False) -> None:
         )
 
 
+def print_packages(user_flag: bool) -> None:
+    """Print all installed packages"""
+    target_dir = get_site_dir(user_flag)
+    for name, version, _ in sorted(package_index(target_dir).values()):
+        print(f"{name}=={version}")
+
+
 def _get_parser() -> _ArgumentParser:
     """Build and return a decent-ish arg parser."""
 
@@ -106,7 +113,6 @@ def _get_parser() -> _ArgumentParser:
     )
 
     subparsers.add_parser("freeze", help="show installed packages")
-
     return parser
 
 
@@ -172,17 +178,10 @@ def normalize_name(name: DisplayName) -> DistInfoName:
     used for dist-info directory names. The module name is normally the
     "lowered" version of this.
     """
-    global _EVENTUAL_NAME_REX, _EVENTUAL_REPLACE_REX
-    if _EVENTUAL_NAME_REX is None or _EVENTUAL_REPLACE_REX is None:
-        _EVENTUAL_NAME_REX = re.compile(
-            r"^([A-Z0-9]|[A-Z0-9][A-Z0-9._-]*[A-Z0-9])$", re.IGNORECASE
-        )
-        _EVENTUAL_REPLACE_REX = re.compile(r"[-._]+")
-
-    if not _EVENTUAL_NAME_REX.fullmatch(name):
+    if not _NAME_REX.fullmatch(name):
         printerr(f"Error: 🖍️ '{name}' is not a valid package name 🤷")
 
-    return _EVENTUAL_REPLACE_REX.sub("_", name)
+    return _REPLACE_REX.sub("_", name)
 
 
 # === PyProject stuff === #
@@ -423,14 +422,10 @@ def uninstall_impl(package: DisplayName, target_dir: Path) -> bool:
         _, distinfo_dir = installed
         if (entry_points := distinfo_dir / "entry_points.txt").exists():
             with entry_points.open("r") as f:
-                for line in f:
-                    if " = " in line:
-                        scripts.append(line.split(" = ", 1)[0])
+                scripts = [line.split(" = ", 1)[0] for line in f if " = " in line]
         if (top_level_file := distinfo_dir / "top_level.txt").exists():
             with top_level_file.open("r") as f:
-                for line in f:
-                    if line.strip():
-                        top_level.append(line.strip())
+                top_level = [line.strip() for line in f if line.strip()]
 
         shutil.rmtree(distinfo_dir)
 
@@ -455,12 +450,6 @@ def uninstall_impl(package: DisplayName, target_dir: Path) -> bool:
         return True
 
     return False
-
-
-def print_packages(user_flag: bool) -> None:
-    target_dir = get_site_dir(user_flag)
-    for name, version, _ in sorted(package_index(target_dir).values()):
-        print(f"{name}=={version}")
 
 
 if __name__ == "__main__":
